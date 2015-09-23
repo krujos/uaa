@@ -19,6 +19,7 @@ import org.cloudfoundry.identity.uaa.oauth.client.ClientDetailsModification;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.test.TestClient;
 import org.cloudfoundry.identity.uaa.test.UaaTestAccounts;
+import org.cloudfoundry.identity.uaa.util.ClientUtils;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -26,9 +27,11 @@ import org.junit.Test;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static org.cloudfoundry.identity.uaa.util.ClientUtils.createScimClient;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -66,7 +69,8 @@ public class ScimUserLookupMockMvcTests extends InjectedMockContextTest {
 
         originalEnabled = getWebApplicationContext().getBean(UserIdConversionEndpoints.class).isEnabled();
         getWebApplicationContext().getBean(UserIdConversionEndpoints.class).setEnabled(true);
-        createScimClient(adminToken, clientId, clientSecret);
+        String scopes = "scim.userids,scim.me";
+        createScimClient(this.getMockMvc(), adminToken, clientId, clientSecret, "scim", scopes, Arrays.asList(new ClientUtils.GrantType[] {ClientUtils.GrantType.client_credentials, ClientUtils.GrantType.password}), "uaa.none");
         scimLookupIdUserToken = testClient.getUserOAuthAccessToken(clientId, clientSecret, user.getUserName(), "secr3T", "scim.userids");
         if (testUsers==null) {
             testUsers = createUsers(adminToken, testUserCount);
@@ -103,7 +107,6 @@ public class ScimUserLookupMockMvcTests extends InjectedMockContextTest {
 
         getMockMvc().perform(post)
             .andExpect(status().isBadRequest());
-
     }
 
     @Test
@@ -197,18 +200,6 @@ public class ScimUserLookupMockMvcTests extends InjectedMockContextTest {
             validateLookupResults(expectedUsername, body);
         }
 
-    }
-
-
-    private static void createScimClient(String adminAccessToken, String id, String secret) throws Exception {
-        ClientDetailsModification client = new ClientDetailsModification(id, "scim", "scim.userids,scim.me", "client_credentials,password", "uaa.none");
-        client.setClientSecret(secret);
-        MockHttpServletRequestBuilder createClientPost = post("/oauth/clients")
-            .header("Authorization", "Bearer " + adminAccessToken)
-            .accept(APPLICATION_JSON)
-            .contentType(APPLICATION_JSON)
-            .content(JsonUtils.writeValueAsBytes(client));
-        getMockMvc().perform(createClientPost).andExpect(status().isCreated());
     }
 
     private MockHttpServletRequestBuilder getIdLookupRequest(String token, String username, String operator) {

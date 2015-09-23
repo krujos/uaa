@@ -91,6 +91,18 @@
         <csrf disabled="false"/>
     </http>
 
+    <http name="invitationsEndpointSecurity"
+          entry-point-ref="oauthAuthenticationEntryPoint"
+          use-expressions="true"
+          pattern="/invite_users/**"
+          xmlns="http://www.springframework.org/schema/security">
+        <intercept-url pattern="/invite_users" access="#oauth2.hasAnyScope('scim.invite')" method="POST"/>
+        <expression-handler ref="oauthWebExpressionHandler" />
+        <access-denied-handler ref="oauthAccessDeniedHandler" />
+        <custom-filter ref="resourceAgnosticAuthenticationFilter" position="PRE_AUTH_FILTER" />
+        <csrf disabled="true"/>
+    </http>
+
     <http name="resetPasswordSecurity"
           pattern="/reset_password**"
           disable-url-rewriting="true"

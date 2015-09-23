@@ -1,4 +1,4 @@
-package org.cloudfoundry.identity.uaa.login;
+package org.cloudfoundry.identity.uaa.invitations;
 
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
 

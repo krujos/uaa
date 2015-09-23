@@ -29,6 +29,7 @@ import org.cloudfoundry.identity.uaa.scim.exception.MemberAlreadyExistsException
 import org.cloudfoundry.identity.uaa.scim.jdbc.JdbcScimGroupExternalMembershipManager;
 import org.cloudfoundry.identity.uaa.scim.jdbc.JdbcScimGroupProvisioning;
 import org.cloudfoundry.identity.uaa.test.TestClient;
+import org.cloudfoundry.identity.uaa.util.ClientUtils;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
@@ -54,6 +55,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -62,6 +64,7 @@ import java.util.Set;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
+import static org.cloudfoundry.identity.uaa.util.ClientUtils.createScimClient;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -100,7 +103,8 @@ public class ScimGroupEndpointsMockMvcTests extends InjectedMockContextTest {
                 "clients.read clients.write clients.secret");
         String clientId = generator.generate().toLowerCase();
         String clientSecret = generator.generate().toLowerCase();
-        createScimClient(adminToken, clientId, clientSecret);
+        String authorities = "scim.read,scim.write,password.write,oauth.approvals,scim.create";
+        createScimClient(this.getMockMvc(), adminToken, clientId, clientSecret, "oauth", "foo,bar", Collections.singletonList(ClientUtils.GrantType.client_credentials), authorities);
         scimReadToken = testClient.getClientCredentialsOAuthAccessToken(clientId, clientSecret,"scim.read password.write");
         scimWriteToken = testClient.getClientCredentialsOAuthAccessToken(clientId, clientSecret,"scim.write password.write");
 
@@ -294,7 +298,6 @@ public class ScimGroupEndpointsMockMvcTests extends InjectedMockContextTest {
             ScimGroup.class));
     }
 
-
     @Test
     @Ignore //we only create DB once - so can no longer run
     public void testDBisDownDuringCreate() throws Exception {
@@ -312,8 +315,6 @@ public class ScimGroupEndpointsMockMvcTests extends InjectedMockContextTest {
         ResultActions result = createGroup(null, displayName, externalGroup);
         result.andExpect(status().isServiceUnavailable());
     }
-
-
 
     @Test
     public void testGetGroups() throws Exception {
@@ -874,17 +875,6 @@ public class ScimGroupEndpointsMockMvcTests extends InjectedMockContextTest {
             }
             assertTrue("Did not find expected external group mapping:"+s,found);
         }
-    }
-
-    private void createScimClient(String adminAccessToken, String id, String secret) throws Exception {
-        ClientDetailsModification client = new ClientDetailsModification(id, "oauth", "foo,bar", "client_credentials,password", "scim.read,scim.write,password.write,oauth.approvals");
-        client.setClientSecret(secret);
-        MockHttpServletRequestBuilder createClientPost = post("/oauth/clients")
-                .header("Authorization", "Bearer " + adminAccessToken)
-                .accept(APPLICATION_JSON)
-                .contentType(APPLICATION_JSON)
-                .content(JsonUtils.writeValueAsBytes(client));
-        getMockMvc().perform(createClientPost).andExpect(status().isCreated());
     }
 
     private ScimUser createUser(String token, Set<String> scopes) throws Exception {

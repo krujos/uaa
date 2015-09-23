@@ -1,5 +1,9 @@
 package org.cloudfoundry.identity.uaa.login;
 
+import org.cloudfoundry.identity.uaa.invitations.InvitationsController;
+import org.cloudfoundry.identity.uaa.invitations.InvitationsEndpoint;
+import org.cloudfoundry.identity.uaa.invitations.InvitationsService;
+import org.cloudfoundry.identity.uaa.scim.ScimUserProvisioning;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.*;
 import org.springframework.core.env.Environment;
@@ -27,6 +31,12 @@ public class LoginServerConfig {
         InvitationsController result = new InvitationsController(invitationsService);
         result.setSpEntityID(context.getBean("samlEntityID", String.class));
         return result;
+    }
+
+    @Bean
+    @Conditional(InviteUsersCondition.class)
+    public InvitationsEndpoint invitationsEndpoint(InvitationsService invitationsService, ScimUserProvisioning scimUserProvisioning) {
+        return new InvitationsEndpoint(invitationsService, scimUserProvisioning);
     }
 
     public static class InviteUsersCondition implements Condition {
